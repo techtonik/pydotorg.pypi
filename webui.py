@@ -1,7 +1,8 @@
 # system imports
 import sys, os, urllib, cStringIO, traceback, cgi, binascii, gzip
 import time, random, smtplib, base64, email, types, urlparse
-import re, zipfile, logging, shutil, Cookie, subprocess, hashlib
+import re, zipfile, shutil, Cookie, subprocess, hashlib
+import logging
 from zope.pagetemplate.pagetemplatefile import PageTemplateFile
 from distutils.util import rfc822_escape
 from distutils2.metadata import Metadata
@@ -243,19 +244,25 @@ class WebUI:
         # configure logging
         if self.config.logfile or self.config.mailhost:
             root = logging.getLogger()
-            hdlrs = []
+            if self.config.debug_mode == 'yes':
+                root.setLevel(logging.DEBUG)
+                hdlr = logging.StreamHandler()
+                hdlr.setFormatter(logging.Formatter(
+                    fmt='%(asctime)s:%(levelname)s %(message)s',
+                    datefmt='%H:%M:%S'))
+                root.addHandler(hdlr)
+                logging.info("--- Running PyPI in DEBUG mode ---")
             if self.config.logfile:
                 hdlr = logging.FileHandler(self.config.logfile)
                 formatter = logging.Formatter(
                     '%(asctime)s %(name)s:%(levelname)s %(message)s')
                 hdlr.setFormatter(formatter)
-                hdlrs.append(hdlr)
+                root.addHandler(hdlr)
             if self.config.logging_mailhost:
                 hdlr = MailingLogger.MailingLogger(self.config.logging_mailhost,
                     self.config.fromaddr, self.config.toaddrs,
                     '[PyPI] %(line)s', False, flood_level=10)
-                hdlrs.append(hdlr)
-            root.handlers = hdlrs
+                root.addHandler(hdlr)
 
     def run(self):
         ''' Run the request, handling all uncaught errors and finishing off
